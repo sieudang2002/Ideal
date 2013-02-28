@@ -197,7 +197,7 @@ module Ideal
     # verified.
     def verified?
       @verified ||= Ideal::Gateway.ideal_certificate.public_key.
-                      verify(OpenSSL::Digest::SHA1.new, signature, message)
+                      verify(OpenSSL::Digest::SHA256.new, signature, message)
     end
 
     # Returns the bankaccount number when the transaction was successful.

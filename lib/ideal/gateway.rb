@@ -245,7 +245,7 @@ module Ideal
     
     #signs the xml
     def sign!(xml)
-      digest_val = digest_value(xml)
+      digest_val = digest_value(xml.doc.children[0])
       xml.Signature(xmlns: 'http://www.w3.org/2000/09/xmldsig#') do |xml|
         xml.SignedInfo do |xml|
           xml.CanonicalizationMethod(Algorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#')
@@ -258,7 +258,7 @@ module Ideal
             xml.DigestValue digest_val
           end
         end
-        xml.SignatureValue signature_value(digest_val)
+        xml.SignatureValue signature_value(xml.doc.xpath("//Signature:SignedInfo", 'Signature' => 'http://www.w3.org/2000/09/xmldsig#')[0])
         xml.KeyInfo do |xml|
           xml.KeyName fingerprint
         end
@@ -266,21 +266,22 @@ module Ideal
     end
 
     # Creates a +signatureValue+ from the xml+.
-    def signature_value(digest_value)
-      signature = Ideal::Gateway.private_key.sign(OpenSSL::Digest::SHA256.new, digest_value)
-      strip_whitespace(Base64.encode64(strip_whitespace(signature)))
+    def signature_value(sig_val)
+      canonical = sig_val.canonicalize(Nokogiri::XML::XML_C14N_EXCLUSIVE_1_0)
+      signature = Ideal::Gateway.private_key.sign(OpenSSL::Digest::SHA256.new, canonical)
+      strip_whitespace(Base64.encode64(signature))
     end
     
     # Creates a +digestValue+ from the xml+.
     def digest_value(xml)
-      canonical = xml.doc.canonicalize(Nokogiri::XML::XML_C14N_EXCLUSIVE_1_0)
+      canonical = xml.canonicalize(Nokogiri::XML::XML_C14N_EXCLUSIVE_1_0)
       digest = OpenSSL::Digest::SHA256.new.digest canonical
       strip_whitespace(Base64.encode64(strip_whitespace(digest)))
     end
     
     # Creates a keyName value for the XML signature
     def fingerprint
-      Digest::SHA1.hexdigest(Ideal::Gateway.private_certificate.to_der).upcase
+      Digest::SHA1.hexdigest(Ideal::Gateway.private_certificate.to_der)
     end
 
     # Returns a string containing the current UTC time, formatted as per the
@@ -312,7 +313,7 @@ module Ideal
           end
           sign!(xml)
         end
-      end.to_xml
+      end.to_xml(:save_with => Nokogiri::XML::Node::SaveOptions::AS_XML)
     end
 
     def build_directory_request
@@ -326,7 +327,7 @@ module Ideal
           end
           sign!(xml)
         end
-      end.to_xml
+      end.to_xml(:save_with => Nokogiri::XML::Node::SaveOptions::AS_XML)
     end
 
     def build_transaction_request(money, options)
@@ -361,7 +362,7 @@ module Ideal
           end
           sign!(xml)
         end
-      end.to_xml
+      end.to_xml(:save_with => Nokogiri::XML::Node::SaveOptions::AS_XML)
     end
     
     def log(thing, contents)

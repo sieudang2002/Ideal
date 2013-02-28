@@ -6,7 +6,7 @@ module IdealTestCases
   # This method is called at the end of the file when all fixture data has been loaded.
   def self.setup_ideal_gateway!
     Ideal::Gateway.class_eval do
-      self.acquirer = :rabobank
+      self.acquirer = :ing
 
       self.merchant_id = '123456789'
 
@@ -55,7 +55,7 @@ module IdealTestCases
 
     def test_acquirers
       assert_equal 'https://ideal.rabobank.nl/ideal/iDEALv3', Ideal::Gateway.acquirers['rabobank']['live_url']
-      assert_equal 'https://ideal.secure-ing.com/ideal/iDeal', Ideal::Gateway.acquirers['ing']['live_url']
+      assert_equal 'https://ideal.secure-ing.com/ideal/iDEALv3', Ideal::Gateway.acquirers['ing']['live_url']
       assert_equal 'https://abnamro.ideal-payment.de/ideal/iDeal', Ideal::Gateway.acquirers['abnamro']['live_url']
     end
 
