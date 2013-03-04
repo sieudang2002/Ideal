@@ -3,7 +3,6 @@
 require 'openssl'
 require 'net/https'
 require 'base64'
-require 'digest/sha2'
 
 module Ideal
   # === Response classes
@@ -137,7 +136,12 @@ module Ideal
     #
     #   gateway.issuers.list # => [{ :id => '1006', :name => 'ABN AMRO Bank' }, …]
     def issuers
-      post_data request_url, build_directory_request, DirectoryResponse
+      x = build_directory_request
+
+      a= post_data request_url, x, DirectoryResponse
+
+      $stderr.write("REQ: #{x} RES: #{a.response}")
+      a
     end
 
     # Starts a purchase by sending an acquirer transaction request for the
@@ -185,7 +189,11 @@ module Ideal
     #
     # See the Gateway class description for a more elaborate example.
     def setup_purchase(money, options)
-      post_data request_url, build_transaction_request(money, options), TransactionResponse
+      req = build_transaction_request(money, options)
+      $stderr.write(req)
+      resp = post_data request_url, req, TransactionResponse
+      #raise SecurityError, "The message could not be verified" if !resp.verified?
+      resp
     end
 
     # Sends a acquirer status request for the specified +transaction_id+ and
@@ -205,7 +213,11 @@ module Ideal
     #
     # See the Gateway class description for a more elaborate example.
     def capture(transaction_id)
-      post_data request_url, build_status_request(:transaction_id => transaction_id), StatusResponse
+      a = build_status_request(:transaction_id => transaction_id)
+      $stderr.write("REQ: #{a}")
+      b = post_data request_url, a, StatusResponse
+      $stderr.write("RES: #{b.response}")
+      b
     end
 
     private
@@ -237,12 +249,8 @@ module Ideal
     def enforce_maximum_length(key, string, max_length)
       raise ArgumentError, "The value for `#{key}' exceeds the limit of #{max_length} characters." if string.length > max_length
       raise ArgumentError, "The value for `#{key}' contains diacritical characters `#{string}'." if string =~ DIACRITICAL_CHARACTERS
-    end
+    end    
 
-    def strip_whitespace(str)
-      str.gsub(/\s/m,'')
-    end
-    
     #signs the xml
     def sign!(xml)
       digest_val = digest_value(xml.doc.children[0])
@@ -269,14 +277,14 @@ module Ideal
     def signature_value(sig_val)
       canonical = sig_val.canonicalize(Nokogiri::XML::XML_C14N_EXCLUSIVE_1_0)
       signature = Ideal::Gateway.private_key.sign(OpenSSL::Digest::SHA256.new, canonical)
-      strip_whitespace(Base64.encode64(signature))
+      Base64.encode64(signature)
     end
     
     # Creates a +digestValue+ from the xml+.
     def digest_value(xml)
       canonical = xml.canonicalize(Nokogiri::XML::XML_C14N_EXCLUSIVE_1_0)
       digest = OpenSSL::Digest::SHA256.new.digest canonical
-      strip_whitespace(Base64.encode64(strip_whitespace(digest)))
+      Base64.encode64(digest)
     end
     
     # Creates a keyName value for the XML signature
@@ -318,7 +326,7 @@ module Ideal
 
     def build_directory_request
       timestamp = created_at_timestamp
-      Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
+      xml = Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
         xml.DirectoryReq(xmlns: XML_NAMESPACE, version: API_VERSION) do |xml|
           xml.createDateTimestamp created_at_timestamp
           xml.Merchant do |xml|

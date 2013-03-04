@@ -3,7 +3,7 @@
 require 'cgi'
 require 'openssl'
 require 'base64'
-require 'rexml/document'
+#require 'rexml/document'
 
 module Ideal
   # The base class for all iDEAL response classes.
@@ -14,7 +14,11 @@ module Ideal
     attr_accessor :response
 
     def initialize(response_body, options = {})
-      @response = REXML::Document.new(response_body).root
+      #@response = REXML::Document.new(response_body).root
+      @body = response_body
+      doc = Nokogiri::XML(response_body)
+      doc.remove_namespaces!
+      @response = doc.root
       @success = !error_occured?
       @test = options[:test]
     end
@@ -142,7 +146,7 @@ module Ideal
     end
 
     def text(path)
-      @response.get_text(path).to_s
+      @response.xpath(path)[0].text() unless @response.xpath(path)[0].nil?
     end
   end
 
@@ -157,6 +161,11 @@ module Ideal
       CGI::unescapeHTML(text('//issuerAuthenticationURL'))
     end
 
+    def verified?
+      signed_document = SignedDocument.new(@body)
+      @verified ||= signed_document.validate(Ideal::Gateway.ideal_certificate)
+    end
+
     # Returns the transaction ID which is needed for requesting the status
     # of a transaction. See Gateway#capture.
     def transaction_id
@@ -166,6 +175,15 @@ module Ideal
     # Returns the <tt>:order_id</tt> for this transaction.
     def order_id
       text('//purchaseID')
+    end
+
+    def signedinfo
+      node = @response.xpath("//SignedInfo")[0]
+      canonical = node.canonicalize(Nokogiri::XML::XML_C14N_EXCLUSIVE_1_0)
+    end
+
+    def signature     
+      Base64.decode64(text('//SignatureValue'))
     end
   end
 
@@ -190,14 +208,14 @@ module Ideal
     # <tt>:failure</tt>.
     def status
       status = text('//status')
-      status.downcase.to_sym unless (status.strip == '')
+      status.downcase.to_sym unless (status.nil? || status.strip == '')
     end
 
     # Returns whether or not the authenticity of the message could be
     # verified.
     def verified?
-      @verified ||= Ideal::Gateway.ideal_certificate.public_key.
-                      verify(OpenSSL::Digest::SHA256.new, signature, message)
+      signed_document = SignedDocument.new(@body)
+      @verified ||= signed_document.validate(Ideal::Gateway.ideal_certificate)  
     end
 
     # Returns the bankaccount number when the transaction was successful.
@@ -230,7 +248,7 @@ module Ideal
     end
 
     def signature
-      Base64.decode64(text('//signatureValue'))
+      Base64.decode64(text('//SignatureValue'))
     end
   end
 
@@ -242,8 +260,8 @@ module Ideal
     #
     #   gateway.issuers.list # => [{ :id => '1006', :name => 'ABN AMRO Bank' }]
     def list
-      @response.get_elements('//Issuer').map do |issuer|
-        { :id => issuer.get_text('issuerID').to_s, :name => issuer.get_text('issuerName').to_s }
+      @response.xpath("//Issuer").map do |issuer|
+        { :id => issuer.xpath("//issuerID")[0].text(), :name => issuer.xpath("//issuerName")[0].text() }
       end
     end
   end

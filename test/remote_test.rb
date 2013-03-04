@@ -61,11 +61,12 @@ class IdealTest < Test::Unit::TestCase
   # See test_transaction_id for info on how the remote tests are ran.
   #
 
-  #def test_retrieval_of_issuers
-  #  issuer_list = @gateway.issuers.list
-  #  assert_equal 1, issuer_list.length
-  #  assert_match /^Issuer\ Sim/, issuer_list[0][:name]
-  #end
+  def test_retrieval_of_issuers
+    issuer_list = @gateway.issuers.list
+    assert_equal 1, issuer_list.length
+    assert_match /^Issuer\ Sim/, issuer_list[0][:name]
+  end
+
 
   def test_successful_transaction
     capture_transaction(:success)
@@ -106,7 +107,7 @@ class IdealTest < Test::Unit::TestCase
     assert_failure captured_response
     assert_equal 'SO1000', captured_response.error_code
   end
-  
+
   private
 
   # Shortcut method which does a #setup_purchase through #test_transaction and
@@ -130,6 +131,9 @@ class IdealTest < Test::Unit::TestCase
 
     response = @gateway.setup_purchase(amount, @valid_options)
     assert response.success?
+
+    $stderr.write("RESP: #{response.service_url}")
+
     response
   end
 
