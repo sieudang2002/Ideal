@@ -260,8 +260,8 @@ module Ideal
     #
     #   gateway.issuers.list # => [{ :id => '1006', :name => 'ABN AMRO Bank' }]
     def list
-      @response.xpath("//Issuer").map do |issuer|
-        { :id => issuer.xpath("//issuerID")[0].text(), :name => issuer.xpath("//issuerName")[0].text() }
+      @response.xpath("//Issuer").map.with_index do |issuer, i|
+        { :id => issuer.xpath("//issuerID")[i].text(), :name => issuer.xpath("//issuerName")[i].text() }
       end
     end
   end
