@@ -37,7 +37,7 @@ Or you can add it as a dependency in your Gemfile.
 Finally, if you don't dig any of that gemming that's so popular nowadays, you can install it as a plugin;
 
 <pre><code>cd vendor/plugins
-git clone --depth 1 git://github.com/Fingertips/Ideal.git ideal</code></pre>
+git clone --depth 1 git://github.com/sieudang2002/Ideal.git ideal</code></pre>
 
 h2. Generate private keys and certificates
 
@@ -153,9 +153,9 @@ end
 </code></pre>
 
 <pre><code>
-<%= form_for(@payment) do |f| %
-  <%= f.select(:issuer_id, @issuers)
-<% end %</code></pre>
+<%= form_for(@payment) do |f| %>
+  <%= f.select(:issuer_id, @issuers) %>
+<% end %></code></pre>
 
 Would result in something like:
 
